@@ -1,27 +1,21 @@
-/*
- * File	: uart.c
- * This file is part of Espressif's AT+ command set program.
- * Copyright (C) 2013 - 2016, Espressif Systems
+/******************************************************************************
+ * Copyright 2013-2014 Espressif Systems (Wuxi)
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of version 3 of the GNU General Public License as
- * published by the Free Software Foundation.
+ * FileName: uart.c
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Description: Two UART mode configration and interrupt handler.
+ *              Check your hardware connection while use this mode.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+ * Modification history:
+ *     2014/3/12, v1.0 create this file.
+*******************************************************************************/
 #include "ets_sys.h"
 #include "osapi.h"
 #include "driver/uart.h"
 #include "osapi.h"
 #include "driver/uart_register.h"
 //#include "ssc.h"
-#include "at.h"
+
 
 // UartDev is defined and initialized in rom code.
 extern UartDevice    UartDev;
@@ -122,7 +116,7 @@ uart_tx_one_char(uint8 uart, uint8 TxChar)
  * Parameters   : char c - character to tx
  * Returns      : NONE
 *******************************************************************************/
-LOCAL void ICACHE_FLASH_ATTR
+void ICACHE_FLASH_ATTR
 uart1_write_char(char c)
 {
   if (c == '\n')
@@ -136,6 +130,23 @@ uart1_write_char(char c)
   else
   {
     uart_tx_one_char(UART1, c);
+  }
+}
+
+void ICACHE_FLASH_ATTR
+uart0_write_char(char c)
+{
+  if (c == '\n')
+  {
+    uart_tx_one_char(UART0, '\r');
+    uart_tx_one_char(UART0, '\n');
+  }
+  else if (c == '\r')
+  {
+  }
+  else
+  {
+    uart_tx_one_char(UART0, c);
   }
 }
 /******************************************************************************
@@ -166,10 +177,10 @@ uart0_tx_buffer(uint8 *buf, uint16 len)
 void ICACHE_FLASH_ATTR
 uart0_sendStr(const char *str)
 {
-	while(*str)
-	{
-		uart_tx_one_char(UART0, *str++);
-	}
+  while(*str)
+  {
+    uart_tx_one_char(UART0, *str++);
+  }
 }
 
 /******************************************************************************
@@ -213,7 +224,7 @@ uart0_rx_intr_handler(void *para)
 //    os_printf("fifo full\r\n");
     ETS_UART_INTR_DISABLE();/////////
 
-    system_os_post(at_recvTaskPrio, 0, 0);
+    //system_os_post(at_recvTaskPrio, 0, 0);
 
 //    WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_RXFIFO_FULL_INT_CLR);
 //    while (READ_PERI_REG(UART_STATUS(uart_no)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S))
@@ -227,8 +238,7 @@ uart0_rx_intr_handler(void *para)
   {
     ETS_UART_INTR_DISABLE();/////////
 
-//    os_printf("stat:%02X",*(uint8 *)UART_INT_ENA(uart_no));
-    system_os_post(at_recvTaskPrio, 0, 0);
+    //system_os_post(at_recvTaskPrio, 0, 0);
 
 //    WRITE_PERI_REG(UART_INT_CLR(uart_no), UART_RXFIFO_TOUT_INT_CLR);
 ////    os_printf("rx time over\r\n");
@@ -285,13 +295,13 @@ uart_init(UartBautRate uart0_br, UartBautRate uart1_br)
   ETS_UART_INTR_ENABLE();
 
   // install uart1 putc callback
-  os_install_putc1((void *)uart1_write_char);
+  os_install_putc1((void *)uart0_write_char);
 }
 
 void ICACHE_FLASH_ATTR
 uart_reattach()
 {
-	uart_init(BIT_RATE_74880, BIT_RATE_74880);
+  uart_init(BIT_RATE_74880, BIT_RATE_74880);
 //  ETS_UART_INTR_ATTACH(uart_rx_intr_handler_ssc,  &(UartDev.rcv_buff));
 //  ETS_UART_INTR_ENABLE();
 }
